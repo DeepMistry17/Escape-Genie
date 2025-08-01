@@ -1,0 +1,89 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Montserrat:wght@400;500&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* --- Light Mode Palette (Default) --- */
+  --lm-bg: #f4f7f9;
+  --lm-panel-bg: #ffffff;
+  --lm-text-primary: #2c3e50;
+  --lm-text-secondary: #7f8c8d;
+  --lm-accent: #3498db;
+  --lm-border: #e0e0e0;
+  --lm-shadow: rgba(44, 62, 80, 0.1);
+
+  /* --- Dark Mode Palette --- */
+  --dm-bg: #121212;
+  --dm-panel-bg: #1E1E1E;
+  --dm-text-primary: #f5f5f7;
+  --dm-text-secondary: #8d8d92;
+  --dm-border: #3a3a3c;
+  --dm-shadow: rgba(0, 0, 0, 0.3);
+  --accent-gradient: linear-gradient(90deg, #9b59b6, #e74c3c, #f39c12);
+
+  /* Default to light mode variables */
+  --color-bg: var(--lm-bg);
+  --color-panel-bg: var(--lm-panel-bg);
+  --color-text-primary: var(--lm-text-primary);
+  --color-text-secondary: var(--lm-text-secondary);
+  --color-accent: var(--lm-accent);
+  --color-border: var(--lm-border);
+  --color-shadow: var(--lm-shadow);
+}
+
+body.dark-mode {
+  --color-bg: var(--dm-bg);
+  --color-panel-bg: var(--dm-panel-bg);
+  --color-text-primary: var(--dm-text-primary);
+  --color-text-secondary: var(--dm-text-secondary);
+  --color-border: var(--dm-border);
+  --color-shadow: var(--dm-shadow);
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3 {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* --- Global Scrollbar Styling --- */
+/* Works on Chrome, Edge, and Safari */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* Make track invisible */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 20px;
+  border: 3px solid var(--color-panel-bg); /* Creates padding around thumb */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-secondary);
+}
+
+/* Specific dark mode thumb style */
+body.dark-mode::-webkit-scrollbar-thumb {
+  background-color: #4A4A4F; /* A subtle dark grey */
+  border-color: var(--dm-panel-bg);
+}
+
+body.dark-mode::-webkit-scrollbar-thumb:hover {
+  background-color: #6c6c72;
+}

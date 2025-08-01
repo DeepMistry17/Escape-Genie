@@ -1,0 +1,14 @@
+# Python
+venv/
+*.pyc
+__pycache__/
+
+# Environment variables
+.env
+
+# Database file
+travel.db
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/build/

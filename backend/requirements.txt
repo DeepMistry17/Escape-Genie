@@ -1,0 +1,10 @@
+Flask
+Flask-Cors
+spacy
+requests
+flask-bcrypt
+Flask-JWT-Extended
+python-dotenv
+gunicorn
+
+#gunicorn is a production-ready web server for Python that hosting services like Render use.
