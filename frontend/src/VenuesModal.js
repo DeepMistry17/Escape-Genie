@@ -28,9 +28,6 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedVenue, setSelectedVenue] = useState(null);
 
-    // This state now controls the expansion to the 3-column layout
-    const [isExpanded, setIsExpanded] = useState(false);
-
     // Review Form State
     const [userRating, setUserRating] = useState(0);
     const [userComment, setUserComment] = useState('');
@@ -39,7 +36,6 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
     const fetchVenuesAndReviews = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Fetch venues
             const venuesResponse = await fetch('https://escape-genie.onrender.com/api/venues', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -48,7 +44,6 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
             const venuesData = await venuesResponse.json();
             setVenues(venuesData || { attractions: [], restaurants: [] });
 
-            // Fetch reviews
             const reviewsResponse = await fetch(`https://escape-genie.onrender.com/api/reviews/${city.id}`);
             const reviewsData = await reviewsResponse.json();
             setReviews(reviewsData || []);
@@ -106,8 +101,11 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
 
     const handleVenueClick = (venue) => {
         setSelectedVenue(venue);
-        setIsExpanded(true); // Expand the modal on click
     };
+
+    const allVenues = [...(venues.attractions || []), ...(venues.restaurants || [])];
+    const mapLocations = selectedVenue ? [selectedVenue] : allVenues;
+
 
     const renderVenueList = (venueList) => {
         return venueList.map(venue => (
@@ -135,16 +133,25 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className={`modal-content ${isExpanded ? 'expanded' : ''}`} onClick={e => e.stopPropagation()}>
-                <button className="modal-close-button" onClick={onClose}>×</button>
-                <h2>{city.name}</h2>
-                <div className="modal-header-rating">
-                    <span className="avg-rating-stars">{'★'.repeat(Math.round(averageRating))}{'☆'.repeat(5 - Math.round(averageRating))}</span>
-                    <span className="avg-rating-text">{averageRating} ({reviews.length} reviews)</span>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>{city.name}</h2>
+                  <div className="modal-header-rating">
+                      <span className="avg-rating-stars">{'★'.repeat(Math.round(averageRating))}{'☆'.repeat(5 - Math.round(averageRating))}</span>
+                      <span className="avg-rating-text">{averageRating} ({reviews.length} reviews)</span>
+                  </div>
                 </div>
+                <button className="modal-close-button" onClick={onClose}>×</button>
 
                 <div className="modal-body-split">
-                    {/* Panel 1: Venues List */}
+                    <div className="venues-map-panel">
+                        <MapComponent
+                            locations={mapLocations}
+                            isDarkMode={isDarkMode}
+                            defaultZoom={12}
+                        />
+                    </div>
+                    
                     <div className="venues-list-panel">
                         {isLoading ? <p>Loading...</p> : (
                           <>
@@ -164,17 +171,7 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
                         )}
                     </div>
 
-                    {/* Panel 2: Map (only shows in expanded view) */}
-                    <div className={`venues-map-panel ${isExpanded ? 'visible' : ''}`}>
-                        <MapComponent
-                            locations={selectedVenue ? [selectedVenue] : []}
-                            isDarkMode={isDarkMode}
-                            defaultZoom={15}
-                        />
-                    </div>
-
-                    {/* Panel 3: Reviews (only shows in expanded view) */}
-                    <div className={`reviews-panel ${isExpanded ? 'visible' : ''}`}>
+                    <div className="reviews-panel">
                          <div className="venue-category">
                             <h3>Reviews</h3>
                             <div className="reviews-list-container">

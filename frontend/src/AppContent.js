@@ -3,7 +3,6 @@ import './App.css';
 import VenuesModal from './VenuesModal';
 import MapComponent from './MapComponent';
 
-// --- Main App Content Component ---
 const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
   const [cityResults, setCityResults] = useState([]);
   const [savedDestinations, setSavedDestinations] = useState([]);
@@ -107,17 +106,18 @@ const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
     <>
       <div className="app-container">
         <div className="results-panel">
-          <div className="map-container">
-            <MapComponent
-              locations={resultsToDisplay}
-              isDarkMode={isDarkMode}
+           {/* MAP COMPONENT ADDED HERE */}
+           <div className="map-container">
+            <MapComponent 
+              locations={resultsToDisplay} 
+              isDarkMode={isDarkMode} 
             />
           </div>
           <div className="cities-container">
             <div className="cities-header">
                 <h2>{view === 'saved' ? 'My Saved Destinations' : 'Recommended Cities'}</h2>
                 <button onClick={() => setView(view === 'search' ? 'saved' : 'search')} className="view-toggle-btn">
-                    {view === 'search' ? 'View Saved' : 'View Search'}
+                    {view === 'search' ? 'View Saved' : '🤍'}
                 </button>
             </div>
             {isLoading && <p>Finding the best cities for you...</p>}
@@ -154,12 +154,12 @@ const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
               <div className="toggle-thumb">{isDarkMode ? '🌙' : '☀️'}</div>
             </button>
           </div>
-
+          
           <div className="chat-greeting">
             <h1>Escape Genie</h1>
-            <p>Find Your Ideal Destination.</p>
+            <p>Find Your Ideal Destination</p>
           </div>
-
+          
           <fieldset className="chat-fieldset">
             <div className="chat-filters">
               <div className="filter-group">
@@ -207,10 +207,10 @@ const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
       </div>
 
       {isModalOpen && selectedCity && (
-        <VenuesModal
-          city={selectedCity}
-          onClose={closeModal}
-          isDarkMode={isDarkMode}
+        <VenuesModal 
+          city={selectedCity} 
+          onClose={closeModal} 
+          isDarkMode={isDarkMode} 
         />
       )}
     </>
