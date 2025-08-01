@@ -40,7 +40,7 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
         setIsLoading(true);
         try {
             // Fetch venues
-            const venuesResponse = await fetch('http://127.0.0.1:5000/api/venues', {
+            const venuesResponse = await fetch('https://escape-genie.onrender.com/api/venues', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ city: city }),
@@ -49,7 +49,7 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
             setVenues(venuesData || { attractions: [], restaurants: [] });
 
             // Fetch reviews
-            const reviewsResponse = await fetch(`http://127.0.0.1:5000/api/reviews/${city.id}`);
+            const reviewsResponse = await fetch(`https://escape-genie.onrender.com/api/reviews/${city.id}`);
             const reviewsData = await reviewsResponse.json();
             setReviews(reviewsData || []);
 
@@ -75,7 +75,7 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
         const username = localStorage.getItem('username');
 
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/reviews', {
+            const response = await fetch('https://escape-genie.onrender.com/api/reviews', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -21,7 +21,7 @@ const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/saved', {
+      const response = await fetch('https://escape-genie.onrender.com/api/saved', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -43,7 +43,7 @@ const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
     const method = isSaved ? 'DELETE' : 'POST';
 
     try {
-      const response = await fetch(`http://127.0.0.1:5000${endpoint}`, {
+      const response = await fetch(`https://escape-genie.onrender.com${endpoint}`, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
     setCityResults([]);
     setView('search');
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/chat', {
+      const response = await fetch('https://escape-genie.onrender.com/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, travelerType, tripScope, budget }),
