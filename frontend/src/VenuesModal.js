@@ -27,6 +27,7 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
     const [reviews, setReviews] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedVenue, setSelectedVenue] = useState(null);
+    const [isExpanded, setIsExpanded] = useState(false); // Re-introducing this state for the animation
 
     // Review Form State
     const [userRating, setUserRating] = useState(0);
@@ -101,11 +102,11 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
 
     const handleVenueClick = (venue) => {
         setSelectedVenue(venue);
+        setIsExpanded(true); // Set state to trigger the animation
     };
 
     const allVenues = [...(venues.attractions || []), ...(venues.restaurants || [])];
     const mapLocations = selectedVenue ? [selectedVenue] : allVenues;
-
 
     const renderVenueList = (venueList) => {
         return venueList.map(venue => (
@@ -133,7 +134,8 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
+            {/* The 'expanded' class is now dynamically added here */}
+            <div className={`modal-content ${isExpanded ? 'expanded' : ''}`} onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                   <h2>{city.name}</h2>
                   <div className="modal-header-rating">

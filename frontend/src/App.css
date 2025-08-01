@@ -205,7 +205,7 @@ body:not(.dark-mode) .venue-category h3 {
   overflow-y: auto;
 }
 
-/* --- VENUES MODAL STYLES (FINAL RESPONSIVE VERSION) --- */
+/* --- VENUES MODAL STYLES (FINAL RESPONSIVE & ANIMATED VERSION) --- */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -299,35 +299,53 @@ body:not(.dark-mode) .venue-category h3 {
   flex-shrink: 0;
 }
 
-/* --- Desktop Layout: 3 Columns --- */
+/* Hide map and reviews by default on desktop before animation */
 @media (min-width: 1024px) {
-  .modal-content {
+  .venues-map-panel,
+  .reviews-panel {
+    flex-basis: 0;
+    flex-grow: 0;
+    opacity: 0;
+    transition: flex-basis 0.5s ease, opacity 0.3s ease 0.2s;
+  }
+}
+
+/* --- Desktop Layout: 3 Columns with Animation --- */
+@media (min-width: 1024px) {
+  .modal-content.expanded {
     max-width: 1400px;
     width: 90%;
     padding: 2rem;
   }
-  .modal-header h2 {
+
+  .modal-content.expanded .modal-header h2 {
     font-size: 2rem;
   }
-  .modal-header-rating {
+  .modal-content.expanded .modal-header-rating {
     font-size: 1.2rem;
   }
-  .modal-body-split {
+
+  .modal-content.expanded .modal-body-split {
     flex-direction: row;
     gap: 1.5rem;
   }
-  .venues-map-panel {
-    order: 2;
-    flex: 2;
+
+  .modal-content.expanded .venues-list-panel {
+    flex-basis: 380px;
+    flex-grow: 0;
+  }
+
+  .modal-content.expanded .venues-map-panel {
+    flex-basis: 0;
+    flex-grow: 2;
     height: 100%;
+    opacity: 1;
   }
-  .venues-list-panel {
-    order: 1;
-    flex: 0 0 380px;
-  }
-  .reviews-panel {
-    order: 3;
-    flex: 1;
+
+  .modal-content.expanded .reviews-panel {
+    flex-basis: 0;
+    flex-grow: 1;
+    opacity: 1;
   }
 }
 
