@@ -1,3 +1,5 @@
+/* src/App.css */
+
 /* CORE LAYOUT */
 .app-container {
   display: flex;
@@ -21,7 +23,7 @@
 
 .results-panel {
   flex: 3;
-  overflow: hidden; /* Changed from auto to hidden */
+  overflow: hidden;
 }
 
 .chat-panel {
@@ -188,7 +190,7 @@ body:not(.dark-mode) .venue-category h3 {
 
 /* --- MAP & CITIES LAYOUT IN MAIN PANEL --- */
 .results-panel {
-  padding: 0; /* Remove padding to make map edge-to-edge */
+  padding: 0;
 }
 
 .map-container {
@@ -205,7 +207,7 @@ body:not(.dark-mode) .venue-category h3 {
   overflow-y: auto;
 }
 
-/* --- VENUES MODAL STYLES (FINAL RESPONSIVE VERSION) --- */
+/* --- VENUES MODAL STYLES --- */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -262,7 +264,6 @@ body:not(.dark-mode) .venue-category h3 {
   padding: 0.5rem;
 }
 
-/* Default Mobile Layout: Vertical Stack */
 .modal-body-split {
   display: flex;
   flex-direction: column;
@@ -281,9 +282,9 @@ body:not(.dark-mode) .venue-category h3 {
 
 .venues-list-panel,
 .reviews-panel {
-  flex: 1; /* Make them share the remaining space equally */
+  flex: 1;
   overflow-y: auto;
-  padding-right: 0.5rem; /* For scrollbar */
+  padding-right: 0.5rem;
 }
 
 .reviews-panel {
@@ -299,7 +300,6 @@ body:not(.dark-mode) .venue-category h3 {
   flex-shrink: 0;
 }
 
-/* --- Desktop Layout: 3 Columns --- */
 @media (min-width: 1024px) {
   .modal-content {
     max-width: 1400px;
@@ -663,16 +663,29 @@ body.dark-mode .review-form button {
   opacity: 0.7;
 }
 
-/* FINAL RESPONSIVE FIXES */
+/* === FINAL RESPONSIVE FIXES (EDITED SECTION) === */
 @media (max-width: 1024px) {
   .app-container {
     flex-direction: column;
     height: auto;
     padding: 1rem;
+    gap: 1rem;
   }
 
   .results-panel,
   .chat-panel {
+    padding: 1.5rem;
+    flex: 1; /* Reset flex */
+  }
+
+  /* Specific adjustments for the stacked results panel on mobile */
+  .results-panel {
+    padding: 0; /* Keep it edge-to-edge for the map */
+    height: 80vh; /* Give it a substantial height on mobile */
+    min-height: 500px;
+  }
+
+  .cities-container {
     padding: 1.5rem;
   }
 }
