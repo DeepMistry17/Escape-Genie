@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import VenuesModal from './VenuesModal';
-import MapComponent from './MapComponent';
 
 const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
   const [cityResults, setCityResults] = useState([]);
@@ -106,41 +105,32 @@ const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
     <>
       <div className="app-container">
         <div className="results-panel">
-           {/* MAP COMPONENT ADDED HERE */}
-           <div className="map-container">
-            <MapComponent 
-              locations={resultsToDisplay} 
-              isDarkMode={isDarkMode} 
-            />
+          <div className="cities-header">
+              <h2>{view === 'saved' ? 'My Saved Destinations' : 'Recommended Cities'}</h2>
+              <button onClick={() => setView(view === 'search' ? 'saved' : 'search')} className="view-toggle-btn">
+                  {view === 'search' ? 'View Saved' : '🤍'}
+              </button>
           </div>
-          <div className="cities-container">
-            <div className="cities-header">
-                <h2>{view === 'saved' ? 'My Saved Destinations' : 'Recommended Cities'}</h2>
-                <button onClick={() => setView(view === 'search' ? 'saved' : 'search')} className="view-toggle-btn">
-                    {view === 'search' ? 'View Saved' : '🤍'}
-                </button>
-            </div>
-            {isLoading && <p>Finding the best cities for you...</p>}
-            {error && <p className="error-message">{error}</p>}
-            <div className="results-grid">
-              {resultsToDisplay.map((city) => {
-                const isSaved = savedDestinationIds.has(city.id);
-                return (
-                  <div key={city.id} className="destination-card" >
-                     <div className="card-content" onClick={() => handleCityClick(city)}>
-                        <h3>{city.name}</h3>
-                        <p>{city.description}</p>
-                    </div>
-                    <button onClick={() => handleSave(city.id, isSaved)} className={`save-btn ${isSaved ? 'saved' : ''}`}>
-                        {isSaved ? '❤️' : '🤍'}
-                    </button>
+          {isLoading && <p>Finding the best cities for you...</p>}
+          {error && <p className="error-message">{error}</p>}
+          <div className="results-grid">
+            {resultsToDisplay.map((city) => {
+              const isSaved = savedDestinationIds.has(city.id);
+              return (
+                <div key={city.id} className="destination-card" >
+                   <div className="card-content" onClick={() => handleCityClick(city)}>
+                      <h3>{city.name}</h3>
+                      <p>{city.description}</p>
                   </div>
-                )
-              })}
-               {view === 'saved' && savedDestinations.length === 0 && (
-                    <p>You haven't saved any destinations yet.</p>
-                )}
-            </div>
+                  <button onClick={() => handleSave(city.id, isSaved)} className={`save-btn ${isSaved ? 'saved' : ''}`}>
+                      {isSaved ? '❤️' : '🤍'}
+                  </button>
+                </div>
+              )
+            })}
+             {view === 'saved' && savedDestinations.length === 0 && (
+                  <p>You haven't saved any destinations yet.</p>
+              )}
           </div>
         </div>
 
