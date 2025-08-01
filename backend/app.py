@@ -9,14 +9,16 @@ import urllib.parse
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
 import sqlalchemy # Ensure this is imported
-
+import time
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 load_dotenv()
 app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "your-super-secret-key-change-this")
 
 # CORRECTED: Allow requests from your Render frontend and local development environment
 origins = [
-    "https://escape-genie-frontend.onrender.com",
+    "https://escapegenie.onrender.com", 
     "http://localhost:3000"
 ]
 CORS(app, resources={r"/api/*": {"origins": origins}})
@@ -141,14 +143,22 @@ def chat():
 
 def fetch_venues_by_category(lon, lat, categories, limit=10):
     places_url = f"https://api.geoapify.com/v2/places?categories={categories}&filter=circle:{lon},{lat},15000&bias=proximity:{lon},{lat}&limit={limit}&apiKey={GEOAPIFY_API_KEY}"
+
+    # Setup a session with a retry strategy
+    session = requests.Session()
+    retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+
     try:
-        response = requests.get(places_url)
-        response.raise_for_status()
+        response = session.get(places_url)
+        response.raise_for_status() # Raise an exception for bad status codes
         features = response.json().get('features', [])
         venues = [{'id': prop.get('place_id'),'name': prop.get('name'),'address': prop.get('address_line2', 'Address not available'),'lon': coords[0],'lat': coords[1]} for venue in features if (prop := venue.get('properties', {})) and (coords := venue.get('geometry', {}).get('coordinates')) and prop.get('name')]
         return venues
     except requests.exceptions.RequestException as e:
-        print(f"API call to Geoapify failed: {e}")
+        print(f"API call to Geoapify failed after retries: {e}")
         return []
 
 @app.route('/api/venues', methods=['POST'])
