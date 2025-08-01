@@ -675,6 +675,17 @@ body.dark-mode .review-form button {
   .chat-panel {
     padding: 1.5rem;
   }
+
+  /* Make main map visible on smaller screens */
+  .map-container {
+    height: 250px;
+    border-radius: 12px;
+  }
+
+  .cities-container {
+    height: auto;
+    padding: 1.5rem 0 0 0;
+  }
 }
 
 @media (max-width: 576px) {
