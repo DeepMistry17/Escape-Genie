@@ -8,25 +8,28 @@ import requests
 import urllib.parse
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
-import sqlalchemy
+import sqlalchemy # Ensure this is imported
 
 load_dotenv()
 app = Flask(__name__)
-app.config["JWT_SECRET_KEY"] = "your-super-secret-key-change-this" 
-# Allow requests from your Render frontend and local development environment
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "your-super-secret-key-change-this")
+
+# CORRECTED: Allow requests from your Render frontend and local development environment
 origins = [
     "https://escape-genie-frontend.onrender.com",
     "http://localhost:3000"
 ]
 CORS(app, resources={r"/api/*": {"origins": origins}})
+
+bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
 # --- Configuration & Setup ---
 GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY")
 DB_NAME = 'travel.db'
+
 # We will "lazy-load" the model inside the /chat endpoint to ensure a fast and stable server startup.
 nlp = None
-
 
 SYNONYM_MAP = {"romantic": "romance", "historical": "history", "adventurous": "adventure", "relaxing": "relaxation", "cultural": "culture", "mountains": "mountain"}
 STOP_WORDS = {"trip", "vacation", "holiday", "getaway", "journey", "tour", "destination", "place"}
@@ -51,14 +54,22 @@ def register():
     password = data.get('password')
     if not username or not password:
         return jsonify({"msg": "Username and password are required"}), 400
+
     conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+    # CORRECTED: Use SQLAlchemy named parameter syntax (:username)
+    user_query = sqlalchemy.text("SELECT * FROM users WHERE username = :username")
+    user = conn.execute(user_query, {'username': username}).fetchone()
+
     if user:
         conn.close()
         return jsonify({"msg": "Username already exists"}), 409
+
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-    conn.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
-    conn.commit()
+    # CORRECTED: Use SQLAlchemy syntax for INSERT
+    insert_query = sqlalchemy.text("INSERT INTO users (username, password) VALUES (:username, :password)")
+    conn.execute(insert_query, {'username': username, 'password': hashed_password})
+    # For SQLAlchemy with PostgreSQL, you may need to commit the transaction
+    if hasattr(conn, 'commit'): conn.commit()
     conn.close()
     return jsonify({"msg": "User created successfully"}), 201
 
@@ -69,22 +80,28 @@ def login():
     password = data.get('password')
     if not username or not password:
         return jsonify({"msg": "Username and password are required"}), 400
+
     conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+    # CORRECTED: Use SQLAlchemy named parameter syntax (:username)
+    user_query = sqlalchemy.text("SELECT * FROM users WHERE username = :username")
+    user = conn.execute(user_query, {'username': username}).fetchone()
     conn.close()
-    if user and bcrypt.check_password_hash(user['password'], password):
-        access_token = create_access_token(identity=str(user['id']))
-        return jsonify(access_token=access_token, username=username)
+
+    # Convert SQLAlchemy Row to a dict-like object if it's not already
+    if user:
+        user_dict = dict(user._mapping) if hasattr(user, '_mapping') else user
+        if bcrypt.check_password_hash(user_dict['password'], password):
+            access_token = create_access_token(identity=str(user_dict['id']))
+            return jsonify(access_token=access_token, username=username)
+
     return jsonify({"msg": "Bad username or password"}), 401
 
-# --- Main App Endpoints ---
-# app.py
 
+# --- Main App Endpoints ---
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    global nlp # Use the global nlp variable
+    global nlp
 
-    # Lazy load the model only if it hasn't been loaded yet
     if nlp is None:
         try:
             print("Loading SpaCy model for the first time...")
@@ -92,7 +109,6 @@ def chat():
             print("SpaCy model loaded successfully.")
         except IOError:
             print("Fatal: SpaCy model not found on server.")
-            # Return a 503 Service Unavailable error if the model can't be loaded
             return jsonify({"error": "Language model is temporarily unavailable"}), 503
 
     data = request.json
@@ -101,20 +117,27 @@ def chat():
 
     doc = nlp(user_message.lower())
     search_terms = {SYNONYM_MAP.get(token.lemma_, token.lemma_) for token in doc if token.lemma_ not in STOP_WORDS}
+
     conn = get_db_connection()
-    query = "SELECT * FROM destinations WHERE tags LIKE ? AND tags LIKE ?"
-    params = [f"%{trip_scope}%", f"%{traveler_type}%"]
+    params = {'trip_scope': f'%{trip_scope}%', 'traveler_type': f'%{traveler_type}%'}
+    query_str = "SELECT * FROM destinations WHERE tags LIKE :trip_scope AND tags LIKE :traveler_type"
+
     if budget != 'any':
-        query += " AND cost_tier = ?"
-        params.append(budget)
+        query_str += " AND cost_tier = :budget"
+        params['budget'] = budget
     if search_terms:
-        keyword_filters = " AND (" + " OR ".join(["tags LIKE ?"] * len(search_terms)) + ")"
-        query += keyword_filters
-        params.extend([f"%{term}%" for term in search_terms])
-    query += " ORDER BY name LIMIT 30"
-    results = conn.execute(query, tuple(params)).fetchall()
+        keyword_filters = []
+        for i, term in enumerate(search_terms):
+            param_name = f'term_{i}'
+            keyword_filters.append(f"tags LIKE :{param_name}")
+            params[param_name] = f'%{term}%'
+        query_str += " AND (" + " OR ".join(keyword_filters) + ")"
+
+    query_str += " ORDER BY name LIMIT 30"
+    query = sqlalchemy.text(query_str)
+    results = conn.execute(query, params).fetchall()
     conn.close()
-    return jsonify([dict(row) for row in results])
+    return jsonify([dict(row._mapping) for row in results])
 
 def fetch_venues_by_category(lon, lat, categories, limit=10):
     places_url = f"https://api.geoapify.com/v2/places?categories={categories}&filter=circle:{lon},{lat},15000&bias=proximity:{lon},{lat}&limit={limit}&apiKey={GEOAPIFY_API_KEY}"
@@ -128,7 +151,6 @@ def fetch_venues_by_category(lon, lat, categories, limit=10):
         print(f"API call to Geoapify failed: {e}")
         return []
 
-# --- CORRECTED get_venues function ---
 @app.route('/api/venues', methods=['POST'])
 def get_venues():
     data = request.json
@@ -139,26 +161,26 @@ def get_venues():
         return jsonify({"error": "City ID and coordinates are required"}), 400
 
     categorized_venues = {"attractions": [], "restaurants": []}
-    
+
     def add_maps_url(venue):
         base_url = "https://www.google.com/maps/search/?api=1&query="
-        # Prefer using name and address for a more accurate search
         if 'name' in venue and 'address' in venue and 'not available' not in venue.get('address', '').lower():
             search_query = f"{venue['name']}, {venue['address']}"
             venue['Maps_url'] = f"{base_url}{urllib.parse.quote_plus(search_query)}"
-        # Fallback to coordinates if address is missing or invalid
         elif 'lat' in venue and 'lon' in venue:
             venue['Maps_url'] = f"{base_url}{venue['lat']},{venue['lon']}"
         return venue
 
     conn = get_db_connection()
-    curated_results = conn.execute('SELECT * FROM landmarks WHERE destination_id = ?', (city_id,)).fetchall()
+    # CORRECTED: Use SQLAlchemy syntax
+    query = sqlalchemy.text("SELECT * FROM landmarks WHERE destination_id = :city_id")
+    curated_results = conn.execute(query, {'city_id': city_id}).fetchall()
     conn.close()
 
     existing_venue_names = set()
     if curated_results:
         for landmark in curated_results:
-            venue_data = add_maps_url(dict(landmark))
+            venue_data = add_maps_url(dict(landmark._mapping))
             category_key = f"{venue_data['category']}s"
             if category_key in categorized_venues:
                 categorized_venues[category_key].append(venue_data)
@@ -176,7 +198,6 @@ def get_venues():
                 categorized_venues["restaurants"].append(add_maps_url(restaurant))
 
     return jsonify(categorized_venues)
-# app.py
 
 @app.route('/api/saved', methods=['GET', 'POST'])
 @jwt_required()
@@ -190,27 +211,27 @@ def handle_saved_destinations():
         if not destination_id:
             return jsonify({"msg": "Destination ID is required"}), 400
 
-        # Check if already saved
-        existing = conn.execute('SELECT id FROM saved_destinations WHERE user_id = ? AND destination_id = ?',
-                                (current_user_id, destination_id)).fetchone()
+        # CORRECTED: Use SQLAlchemy syntax
+        existing_query = sqlalchemy.text("SELECT id FROM saved_destinations WHERE user_id = :user_id AND destination_id = :dest_id")
+        existing = conn.execute(existing_query, {'user_id': current_user_id, 'dest_id': destination_id}).fetchone()
         if existing:
             return jsonify({"msg": "Destination already saved"}), 409
 
-        conn.execute('INSERT INTO saved_destinations (user_id, destination_id) VALUES (?, ?)',
-                     (current_user_id, destination_id))
-        conn.commit()
+        insert_query = sqlalchemy.text("INSERT INTO saved_destinations (user_id, destination_id) VALUES (:user_id, :dest_id)")
+        conn.execute(insert_query, {'user_id': current_user_id, 'dest_id': destination_id})
+        if hasattr(conn, 'commit'): conn.commit()
         conn.close()
         return jsonify({"msg": "Destination saved successfully"}), 201
 
-    # GET request
-    saved_query = """
+    # GET request - CORRECTED: Use SQLAlchemy syntax
+    saved_query = sqlalchemy.text("""
         SELECT d.* FROM destinations d
         JOIN saved_destinations sd ON d.id = sd.destination_id
-        WHERE sd.user_id = ?
-    """
-    saved = conn.execute(saved_query, (current_user_id,)).fetchall()
+        WHERE sd.user_id = :user_id
+    """)
+    saved = conn.execute(saved_query, {'user_id': current_user_id}).fetchall()
     conn.close()
-    return jsonify([dict(row) for row in saved])
+    return jsonify([dict(row._mapping) for row in saved])
 
 
 @app.route('/api/saved/<string:destination_id>', methods=['DELETE'])
@@ -218,21 +239,21 @@ def handle_saved_destinations():
 def delete_saved_destination(destination_id):
     current_user_id = get_jwt_identity()
     conn = get_db_connection()
-    conn.execute('DELETE FROM saved_destinations WHERE user_id = ? AND destination_id = ?',
-                 (current_user_id, destination_id))
-    conn.commit()
+    # CORRECTED: Use SQLAlchemy syntax
+    delete_query = sqlalchemy.text("DELETE FROM saved_destinations WHERE user_id = :user_id AND destination_id = :dest_id")
+    conn.execute(delete_query, {'user_id': current_user_id, 'dest_id': destination_id})
+    if hasattr(conn, 'commit'): conn.commit()
     conn.close()
     return jsonify({"msg": "Destination removed"}), 200
 
 @app.route('/api/reviews/<string:destination_id>', methods=['GET'])
 def get_reviews(destination_id):
     conn = get_db_connection()
-    reviews = conn.execute(
-        'SELECT * FROM reviews WHERE destination_id = ? ORDER BY timestamp DESC',
-        (destination_id,)
-    ).fetchall()
+    # CORRECTED: Use SQLAlchemy syntax
+    query = sqlalchemy.text("SELECT * FROM reviews WHERE destination_id = :dest_id ORDER BY timestamp DESC")
+    reviews = conn.execute(query, {'dest_id': destination_id}).fetchall()
     conn.close()
-    return jsonify([dict(row) for row in reviews])
+    return jsonify([dict(row._mapping) for row in reviews])
 
 
 @app.route('/api/reviews', methods=['POST'])
@@ -249,16 +270,22 @@ def add_review():
         return jsonify({"msg": "Missing required fields"}), 400
 
     conn = get_db_connection()
-    conn.execute(
-        'INSERT INTO reviews (destination_id, user_id, rating, comment, username) VALUES (?, ?, ?, ?, ?)',
-        (destination_id, current_user_id, rating, comment, username)
-    )
-    conn.commit()
+    # CORRECTED: Use SQLAlchemy syntax
+    query = sqlalchemy.text("""
+        INSERT INTO reviews (destination_id, user_id, rating, comment, username)
+        VALUES (:dest_id, :user_id, :rating, :comment, :username)
+    """)
+    params = {
+        'dest_id': destination_id, 'user_id': current_user_id, 'rating': rating,
+        'comment': comment, 'username': username
+    }
+    conn.execute(query, params)
+    if hasattr(conn, 'commit'): conn.commit()
     conn.close()
 
     return jsonify({"msg": "Review added successfully"}), 201
 
+
 if __name__ == '__main__':
-    # The 'port' line is important for hosting services
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
