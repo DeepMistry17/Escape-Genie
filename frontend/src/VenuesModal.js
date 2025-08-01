@@ -1,5 +1,3 @@
-// src/VenuesModal.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import MapComponent from './MapComponent';
@@ -22,6 +20,7 @@ const StarRating = ({ rating, setRating }) => {
         </div>
     );
 };
+
 
 const VenuesModal = ({ city, onClose, isDarkMode }) => {
     const [venues, setVenues] = useState({ attractions: [], restaurants: [] });
@@ -88,7 +87,7 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
             if (response.ok) {
                 setUserRating(0);
                 setUserComment('');
-                fetchVenuesAndReviews(); // Refresh reviews
+                fetchVenuesAndReviews();
             } else {
                 alert("Failed to submit review.");
             }
@@ -107,6 +106,7 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
     const allVenues = [...(venues.attractions || []), ...(venues.restaurants || [])];
     const mapLocations = selectedVenue ? [selectedVenue] : allVenues;
 
+
     const renderVenueList = (venueList) => {
         return venueList.map(venue => (
             <div key={venue.id || venue.name} className="venue-item" onClick={() => handleVenueClick(venue)}>
@@ -119,7 +119,7 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="venue-gmaps-link"
-                    onClick={(e) => e.stopPropagation()} // Prevent modal from closing
+                    onClick={(e) => e.stopPropagation()}
                 >
                     Directions
                 </a>
@@ -129,21 +129,19 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
 
     const averageRating = reviews.length > 0
         ? (reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1)
-        : 0;
-        
-    const averageRatingRounded = Math.round(averageRating);
+        : 'No ratings yet';
 
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <button className="modal-close-button" onClick={onClose}>×</button>
                 <div className="modal-header">
-                    <h2>{city.name}</h2>
-                    <div className="modal-header-rating">
-                        <span className="avg-rating-stars">{'★'.repeat(averageRatingRounded)}{'☆'.repeat(5 - averageRatingRounded)}</span>
-                        <span className="avg-rating-text"> {averageRating > 0 ? `${averageRating} (${reviews.length} reviews)` : 'No reviews yet'}</span>
-                    </div>
+                  <h2>{city.name}</h2>
+                  <div className="modal-header-rating">
+                      <span className="avg-rating-stars">{'★'.repeat(Math.round(averageRating))}{'☆'.repeat(5 - Math.round(averageRating))}</span>
+                      <span className="avg-rating-text">{averageRating} ({reviews.length} reviews)</span>
+                  </div>
                 </div>
+                <button className="modal-close-button" onClick={onClose}>×</button>
 
                 <div className="modal-body-split">
                     <div className="venues-map-panel">
@@ -154,61 +152,60 @@ const VenuesModal = ({ city, onClose, isDarkMode }) => {
                         />
                     </div>
                     
-                    <div className="modal-details-container">
-                        <div className="venues-list-panel">
-                            {isLoading ? <p>Loading recommendations...</p> : (
-                                <>
-                                    {venues.attractions && venues.attractions.length > 0 && (
-                                        <div className="venue-category">
-                                            <h3>Attractions & Landmarks</h3>
-                                            {renderVenueList(venues.attractions)}
-                                        </div>
-                                    )}
-                                    {venues.restaurants && venues.restaurants.length > 0 && (
-                                        <div className="venue-category">
-                                            <h3>Restaurants & Cafes</h3>
-                                            {renderVenueList(venues.restaurants)}
-                                        </div>
-                                    )}
-                                </>
+                    <div className="venues-list-panel">
+                        {isLoading ? <p>Loading...</p> : (
+                          <>
+                            {venues.attractions && venues.attractions.length > 0 && (
+                                <div className="venue-category">
+                                    <h3>Attractions & Landmarks</h3>
+                                    {renderVenueList(venues.attractions)}
+                                </div>
                             )}
+                            {venues.restaurants && venues.restaurants.length > 0 && (
+                                <div className="venue-category">
+                                    <h3>Restaurants & Cafes</h3>
+                                    {renderVenueList(venues.restaurants)}
+                                </div>
+                            )}
+                          </>
+                        )}
+                    </div>
+
+                    <div className="reviews-panel">
+                         <div className="venue-category">
+                            <h3>Reviews</h3>
+                            <div className="reviews-list-container">
+                              {reviews.length > 0 ? (
+                                  reviews.map(review => (
+                                      <div key={review.id} className="review-item">
+                                          <div className="review-header">
+                                              <strong>{review.username}</strong>
+                                              <span className="review-stars">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+                                          </div>
+                                          <p>{review.comment}</p>
+                                          <span className="review-timestamp">{new Date(review.timestamp).toLocaleDateString()}</span>
+                                      </div>
+                                  ))
+                              ) : (
+                                  <p>No reviews yet. Be the first!</p>
+                              )}
+                            </div>
                         </div>
 
-                        <div className="reviews-panel">
-                            <div className="reviews-list-container">
-                                <div className="venue-category">
-                                  <h3>Reviews</h3>
-                                  {reviews.length > 0 ? (
-                                      reviews.map(review => (
-                                          <div key={review.id} className="review-item">
-                                              <div className="review-header">
-                                                  <strong>{review.username}</strong>
-                                                  <span className="review-stars">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
-                                              </div>
-                                              <p>{review.comment}</p>
-                                              <span className="review-timestamp">{new Date(review.timestamp).toLocaleDateString()}</span>
-                                          </div>
-                                      ))
-                                  ) : (
-                                      <p>No reviews yet. Be the first!</p>
-                                  )}
-                                </div>
-                            </div>
-                            <div className="review-form-container">
-                                <h3>Leave a Review</h3>
-                                <form onSubmit={handleReviewSubmit} className="review-form">
-                                    <StarRating rating={userRating} setRating={setUserRating} />
-                                    <textarea
-                                        value={userComment}
-                                        onChange={(e) => setUserComment(e.target.value)}
-                                        placeholder="Share your experience..."
-                                        rows="4"
-                                    />
-                                    <button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting ? 'Submitting...' : 'Submit Review'}
-                                    </button>
-                                </form>
-                            </div>
+                        <div className="venue-category review-form-container">
+                            <h3>Leave a Review</h3>
+                            <form onSubmit={handleReviewSubmit} className="review-form">
+                                <StarRating rating={userRating} setRating={setUserRating} />
+                                <textarea
+                                    value={userComment}
+                                    onChange={(e) => setUserComment(e.target.value)}
+                                    placeholder="Share your experience..."
+                                    rows="4"
+                                />
+                                <button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting ? 'Submitting...' : 'Submit Review'}
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
