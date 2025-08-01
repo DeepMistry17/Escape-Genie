@@ -25,11 +25,9 @@ jwt = JWTManager(app)
 # --- Configuration & Setup ---
 GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY")
 DB_NAME = 'travel.db'
-try:
-    nlp = spacy.load("en_core_web_sm")
-except IOError:
-    nlp = None
-    print("Spacy model 'en_core_web_sm' not found. Please run 'python -m spacy download en_core_web_sm'")
+# We will "lazy-load" the model inside the /chat endpoint to ensure a fast and stable server startup.
+nlp = None
+
 
 SYNONYM_MAP = {"romantic": "romance", "historical": "history", "adventurous": "adventure", "relaxing": "relaxation", "cultural": "culture", "mountains": "mountain"}
 STOP_WORDS = {"trip", "vacation", "holiday", "getaway", "journey", "tour", "destination", "place"}
@@ -81,11 +79,27 @@ def login():
     return jsonify({"msg": "Bad username or password"}), 401
 
 # --- Main App Endpoints ---
+# app.py
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
+    global nlp # Use the global nlp variable
+
+    # Lazy load the model only if it hasn't been loaded yet
+    if nlp is None:
+        try:
+            print("Loading SpaCy model for the first time...")
+            nlp = spacy.load("en_core_web_sm")
+            print("SpaCy model loaded successfully.")
+        except IOError:
+            print("Fatal: SpaCy model not found on server.")
+            # Return a 503 Service Unavailable error if the model can't be loaded
+            return jsonify({"error": "Language model is temporarily unavailable"}), 503
+
     data = request.json
     user_message, traveler_type, trip_scope, budget = data.get('message', ''), data.get('travelerType', 'solo'), data.get('tripScope', 'international'), data.get('budget', 'any')
-    if not nlp or not user_message: return jsonify([])
+    if not user_message: return jsonify([])
+
     doc = nlp(user_message.lower())
     search_terms = {SYNONYM_MAP.get(token.lemma_, token.lemma_) for token in doc if token.lemma_ not in STOP_WORDS}
     conn = get_db_connection()
