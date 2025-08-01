@@ -12,7 +12,12 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 load_dotenv()
 app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = "your-super-secret-key-change-this" 
-CORS(app)
+# Allow requests from your Netlify frontend and your local development environment
+origins = [
+    "https://escapegenie.netlify.app",
+    "http://localhost:3000"
+]
+CORS(app, resources={r"/api/*": {"origins": origins}})
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
