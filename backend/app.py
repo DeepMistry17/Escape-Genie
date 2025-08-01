@@ -8,6 +8,7 @@ import requests
 import urllib.parse
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
+import sqlalchemy
 
 load_dotenv()
 app = Flask(__name__)
@@ -34,8 +35,15 @@ SYNONYM_MAP = {"romantic": "romance", "historical": "history", "adventurous": "a
 STOP_WORDS = {"trip", "vacation", "holiday", "getaway", "journey", "tour", "destination", "place"}
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url:
+        # Use PostgreSQL on Render
+        engine = sqlalchemy.create_engine(db_url)
+        conn = engine.connect()
+    else:
+        # Use SQLite for local development
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
     return conn
 
 # --- Authentication Endpoints ---

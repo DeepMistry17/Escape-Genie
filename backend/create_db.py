@@ -1,81 +1,76 @@
-import sqlite3
+import os
+import sqlalchemy
+from dotenv import load_dotenv
+import sqlite3 # Keep for local use if needed, though this script targets production
+from flask_bcrypt import Bcrypt
+from flask import Flask
+
+# This script is now designed to populate a live PostgreSQL database.
+# It needs a Flask app context to initialize Bcrypt for password hashing.
+app = Flask(__name__)
+bcrypt = Bcrypt(app)
+
+# IMPORTANT: Create a .env file in your backend folder and add a line like this:
+# DATABASE_URL="postgres://your_render_external_connection_string"
+load_dotenv()
+
 
 def create_and_populate_db():
-    """
-    Creates and populates the travel.db SQLite database.
-    This script defines two tables:
-    1. destinations: Contains all the travel destinations with a new 'cost_tier'.
-    2. landmarks: Contains curated, must-see landmarks for each destination.
-    """
-    conn = sqlite3.connect('travel.db')
-    cursor = conn.cursor()
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        print("DATABASE_URL not found in .env file. Cannot connect to the database.")
+        return
 
-    # --- Table 1: Destinations (with cost_tier added) ---
-    cursor.execute('DROP TABLE IF EXISTS destinations')
-    cursor.execute('''
-    CREATE TABLE destinations (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        city TEXT NOT NULL,
-        country TEXT NOT NULL,
-        description TEXT,
-        tags TEXT NOT NULL,
-        lat REAL NOT NULL,
-        lon REAL NOT NULL,
-        cost_tier TEXT NOT NULL DEFAULT 'mid-range'
-    )''')
+    # Use SQLAlchemy for PostgreSQL connection
+    engine = sqlalchemy.create_engine(db_url)
+    conn = engine.connect()
+    trans = conn.begin()
 
-    # --- Table 2: Curated Landmarks ---
-    cursor.execute('DROP TABLE IF EXISTS landmarks')
-    cursor.execute('''
-    CREATE TABLE landmarks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        destination_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        category TEXT NOT NULL, -- 'attraction' or 'restaurant'
-        address TEXT,
-        lat REAL NOT NULL,
-        lon REAL NOT NULL,
-        FOREIGN KEY (destination_id) REFERENCES destinations (id)
-    )''')
+    print("Connecting to PostgreSQL database...")
 
-     # --- Table 3: Users ---
-    cursor.execute('DROP TABLE IF EXISTS users')
-    cursor.execute('''
-    CREATE TABLE users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL
-    )''')
+    try:
+        # Drop tables in the correct order to handle foreign keys
+        conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS reviews, saved_destinations, users, landmarks, destinations CASCADE;"))
+        print("Dropped existing tables.")
 
-    # --- Table 4: Saved Destinations ---
-    cursor.execute('DROP TABLE IF EXISTS saved_destinations')
-    cursor.execute('''
-    CREATE TABLE saved_destinations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        destination_id TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (destination_id) REFERENCES destinations(id)
-    )''')
+        # --- Create Tables ---
+        conn.execute(sqlalchemy.text('''
+        CREATE TABLE destinations (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, city TEXT NOT NULL, country TEXT NOT NULL,
+            description TEXT, tags TEXT NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL, cost_tier TEXT NOT NULL
+        );'''))
 
-     # --- Table 5: Reviews ---
-    cursor.execute('DROP TABLE IF EXISTS reviews')
-    cursor.execute('''
-    CREATE TABLE reviews (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        destination_id TEXT NOT NULL,
-        user_id INTEGER NOT NULL,
-        rating INTEGER NOT NULL,
-        comment TEXT,
-        username TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (destination_id) REFERENCES destinations (id),
-        FOREIGN KEY (user_id) REFERENCES users (id)
-    )''')
+        conn.execute(sqlalchemy.text('''
+        CREATE TABLE landmarks (
+            id SERIAL PRIMARY KEY, destination_id TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL,
+            address TEXT, lat REAL NOT NULL, lon REAL NOT NULL,
+            FOREIGN KEY (destination_id) REFERENCES destinations (id)
+        );'''))
 
-    # --- Data for 'destinations' Table (Your Full List with Cost Tiers) ---
-    curated_data = [
+        conn.execute(sqlalchemy.text('''
+        CREATE TABLE users (
+            id SERIAL PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL
+        );'''))
+
+        conn.execute(sqlalchemy.text('''
+        CREATE TABLE saved_destinations (
+            id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, destination_id TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (destination_id) REFERENCES destinations(id)
+        );'''))
+
+        conn.execute(sqlalchemy.text('''
+        CREATE TABLE reviews (
+            id SERIAL PRIMARY KEY, destination_id TEXT NOT NULL, user_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL, comment TEXT, username TEXT NOT NULL,
+            timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() at time zone 'utc'),
+            FOREIGN KEY (destination_id) REFERENCES destinations(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );'''))
+        print("All tables created successfully.")
+
+        # --- Data for 'destinations' Table (Your Full List with Cost Tiers) ---
+        curated_data = [
         # --- India (Domestic) ---
         {'id': 'goa001', 'name': 'Goa', 'city': 'Goa', 'country': 'India', 'lat': 15.345, 'lon': 74.08, 'description': 'A coastal paradise known for its vibrant nightlife, serene beaches, and Portuguese heritage.', 'tags': 'beach,party,nightlife,relaxation,food,domestic,couple,student,family,solo', 'cost_tier': 'mid-range'},
         {'id': 'udai001', 'name': 'Udaipur, City of Lakes', 'city': 'Udaipur', 'country': 'India', 'lat': 24.5854, 'lon': 73.7125, 'description': 'An incredibly romantic city of shimmering lakes, magnificent palaces, and rich history.', 'tags': 'romance,history,luxury,lake,palace,domestic,couple,family,solo', 'cost_tier': 'luxury'},
@@ -291,9 +286,10 @@ def create_and_populate_db():
         {'id': 'gorillatrek001', 'name': 'Volcanoes National Park', 'city': 'Ruhengeri', 'country': 'Rwanda', 'lat': -1.4725, 'lon': 29.5936, 'description': 'A breathtaking national park offering the life-changing experience of trekking to see mountain gorillas in their natural habitat.', 'tags': 'wildlife,gorilla,hiking,nature,adventure,unesco,international,couple,solo', 'cost_tier': 'luxury'},
     ]
 
-    # --- Data for 'landmarks' Table (Fully Populated) ---
-    curated_landmarks = [
-        # --- Indian Cities ---
+
+        # --- Data for 'landmarks' Table ---
+        curated_landmarks = [
+            # --- Indian Cities ---
         {'dest_id': 'goa001', 'name': 'Baga Beach', 'category': 'attraction', 'address': 'Baga Beach, North Goa, Goa', 'lat': 15.5583, 'lon': 73.7518},
         {'dest_id': 'goa001', 'name': 'Basilica of Bom Jesus', 'category': 'attraction', 'address': 'Old Goa Rd, Bainguinim, Goa 403402', 'lat': 15.5009, 'lon': 73.9116},
         {'dest_id': 'goa001', 'name': 'Fort Aguada', 'category': 'attraction', 'address': 'Fort Aguada Rd, Candolim, Goa 403515', 'lat': 15.4932, 'lon': 73.7735},
@@ -1319,29 +1315,47 @@ def create_and_populate_db():
         {'dest_id': 'gorillatrek001', 'name': 'La Locanda', 'category': 'restaurant', 'address': 'Musanze, Rwanda', 'lat': -1.5008, 'lon': 29.6335}
         ]
 
-    try:
-        # Insert all destinations
-        cursor.executemany('''
-        INSERT OR IGNORE INTO destinations (id, name, city, country, description, tags, lat, lon, cost_tier)
-        VALUES (:id, :name, :city, :country, :description, :tags, :lat, :lon, :cost_tier)
-        ''', curated_data)
-        conn.commit()
-        print(f"Successfully added/updated {len(curated_data)} destinations.")
+        # --- Insert Data into Tables ---
+        if curated_data:
+            # Prepare statement for SQLAlchemy
+            stmt_dest = sqlalchemy.text("""
+                INSERT INTO destinations (id, name, city, country, description, tags, lat, lon, cost_tier)
+                VALUES (:id, :name, :city, :country, :description, :tags, :lat, :lon, :cost_tier)
+            """)
+            conn.execute(stmt_dest, curated_data)
+            print(f"Successfully inserted {len(curated_data)} destinations.")
 
-        # Insert the new curated landmarks
-        cursor.executemany('''
-        INSERT INTO landmarks (destination_id, name, category, address, lat, lon)
-        VALUES (:dest_id, :name, :category, :address, :lat, :lon)
-        ''', curated_landmarks)
-        conn.commit()
-        print(f"Successfully added {len(curated_landmarks)} curated landmarks.")
+        if curated_landmarks:
+            # Adjust dest_id key for SQLAlchemy
+            landmarks_to_insert = [
+                {
+                    'destination_id': lm['dest_id'], 'name': lm['name'], 'category': lm['category'],
+                    'address': lm['address'], 'lat': lm['lat'], 'lon': lm['lon']
+                } for lm in curated_landmarks
+            ]
+            stmt_land = sqlalchemy.text("""
+                INSERT INTO landmarks (destination_id, name, category, address, lat, lon)
+                VALUES (:destination_id, :name, :category, :address, :lat, :lon)
+            """)
+            conn.execute(stmt_land, landmarks_to_insert)
+            print(f"Successfully inserted {len(curated_landmarks)} landmarks.")
+
+        # You can add a default user for testing if you want
+        hashed_password = bcrypt.generate_password_hash('password').decode('utf-8')
+        conn.execute(sqlalchemy.text("INSERT INTO users (username, password) VALUES ('testuser', :password)"), {'password': hashed_password})
+        print("Added a default 'testuser' with password 'password'.")
+
+
+        trans.commit()
+        print("Database created and populated successfully on PostgreSQL!")
 
     except Exception as e:
         print(f"An error occurred: {e}")
+        trans.rollback()
     finally:
-        if conn:
-            conn.close()
+        conn.close()
+
 
 if __name__ == '__main__':
+    # Make sure your .env file in the backend folder has the EXTERNAL DATABASE_URL
     create_and_populate_db()
-    print("Database `travel.db` has been created and populated successfully.")
