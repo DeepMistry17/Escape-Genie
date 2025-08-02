@@ -195,7 +195,7 @@ const AppContent = ({ username, onLogout, isDarkMode, setIsDarkMode }) => {
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="e.g., a relaxing beach vacation with great food..."
+                  placeholder="e.g., relaxing beach vacation ..."
                 />
                 <button type="submit" disabled={isLoading}>
                   {isLoading ? 'Searching...' : 'Send'}
