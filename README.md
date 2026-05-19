@@ -1,8 +1,8 @@
-Team
-Deep Mistry
-Hetvi Joshi
-Kush Gohel
-Prami Shah
+Team:
+- Deep Mistry
+- Hetvi Joshi
+- Kush Gohel
+- Prami Shah
 
 # Escape Genie
 
