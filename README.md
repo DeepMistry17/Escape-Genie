@@ -1,4 +1,8 @@
-Of course. Here is a comprehensive README.md file for your "Escape-Genie" repository, incorporating all the necessary setup and configuration steps:
+Team
+Deep Mistry
+Hetvi Joshi
+Kush Gohel
+Prami Shah
 
 # Escape Genie
 
